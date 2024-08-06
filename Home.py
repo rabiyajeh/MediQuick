@@ -24,86 +24,6 @@ API_URL = "https://api.ai71.ai/v1/chat/completions"
 
 
 
-# Function to download and extract the model from a zip file
-def download_and_extract_model():
-    with zipfile.ZipFile('model.zip', 'r') as zip_ref:
-        zip_ref.extractall('.')
-
-def load_chexnet_model():
-    # Load the model without changing the final layer
-    model = models.resnet50(pretrained=False)
-    
-    # Load the state dict of the original model
-    try:
-        state_dict = torch.load('resnet50-19c8e357.pth')
-        # Remove the keys related to the final layer
-        state_dict.pop('fc.weight', None)
-        state_dict.pop('fc.bias', None)
-        model.load_state_dict(state_dict, strict=False)
-    except RuntimeError as e:
-        st.error(f"Error loading model state dict: {e}")
-        return None
-
-    # Replace the final layer with the one that has 3 outputs
-    model.fc = torch.nn.Linear(model.fc.in_features, 3)
-
-    model.eval()
-    return model
-
-
-
-def preprocess_image(image):
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-    return preprocess(image).unsqueeze(0)
-
-def analyze_image(image):
-    model = load_chexnet_model()
-    if model is None:
-        return {
-            "diagnosis": "Model loading error.",
-            "details": "The model could not be loaded. Please check the model file.",
-            "recommendations": "No recommendations available.",
-            "severity": "N/A",
-            "results": {}
-        }
-
-    try:
-        img = Image.open(BytesIO(image.read()))
-        img_tensor = preprocess_image(img)
-
-        with torch.no_grad():
-            outputs = model(img_tensor)
-
-        # Mock results; replace with actual model output interpretation
-        results = {
-            "Lung Cancer": np.random.random(),
-            "Pneumonia": np.random.random(),
-            "COVID-19": np.random.random()
-        }
-
-        return {
-            "diagnosis": "No abnormalities detected.",
-            "details": "The image does not show any clear signs of lung cancer, pneumonia, or COVID-19.",
-            "recommendations": "Regular check-ups and maintaining a healthy lifestyle are recommended.",
-            "severity": "N/A",
-            "results": results
-        }
-    except Exception as e:
-        st.error(f"An error occurred during image analysis: {e}")
-        return {
-            "diagnosis": "Error during analysis.",
-            "details": "An error occurred while processing the image.",
-            "recommendations": "Please try again.",
-            "severity": "N/A",
-            "results": {}
-        }
-
-        
 # Function to get response from the Falcon 180B model
 def get_response(prompt):
     headers = {
@@ -322,22 +242,37 @@ with tab1:
             st.error("No symptoms provided for the PDF report.")
 
 # Medical Image Analysis Tab
+
+# Medical Image Analysis Tab
 with tab2:
-    st.header("Upload and Analyze Medical Image")
-    uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-    if uploaded_image is not None:
-        st.image(uploaded_image, caption='Uploaded Image.', use_column_width=True)
-        st.write("Analyzing...")
-        result = analyze_image(uploaded_image)
-        st.write("Analysis Result:")
-        st.write(result["diagnosis"])
-        st.write(result["details"])
-        st.write("Recommendations:")
-        st.write(result["recommendations"])
-        st.write("Severity:")
-        st.write(result["severity"])
-        st.write("Analysis Results:")
-        st.write(result["results"])
+    st.header("Medical Image Analysis")
+    uploaded_file = st.file_uploader("Upload a medical image", type=["jpg", "jpeg", "png"])
+    
+    if uploaded_file is not None:
+        # Display the uploaded image
+        image = Image.open(uploaded_file)
+        st.image(image, caption='Uploaded Image', use_column_width=True)
+        
+        # Simulate image analysis with random results
+        analysis_results = [
+            "Normal",
+            "COVID-19 Pneumonia",
+            "Bacterial Pneumonia",
+            "Viral Pneumonia",
+            "Tuberculosis",
+            "Lung Cancer",
+            "Chronic Obstructive Pulmonary Disease (COPD)",
+            "Asthma"
+        ]
+        
+        # Randomly select an analysis result
+        random_result = np.random.choice(analysis_results)
+        
+        # Display the result
+        st.write(f"Analysis Result: {random_result}")
+
+        # Optional: Add a message to indicate that this is simulated
+        st.write("Note: The results are simulated for demonstration purposes and should not be considered medical advice.")
 
 # Reports & Visualizations Tab
 with tab3:
