@@ -8,4 +8,4 @@ torch
 torchvision
 numpy
 altair
-
+zipfile36==0.1.4
