@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+requests
+reportlab
+pillow
+torch
+torchvision
+numpy
+altair
