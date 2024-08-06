@@ -1,4 +1,5 @@
 import streamlit as st
+import zipfile
 import os
 import pandas as pd
 import plotly.express as px
@@ -23,10 +24,17 @@ API_KEY = "api71-api-cccff247-4318-43d0-9f81-35cdb953dd83"
 API_URL = "https://api.ai71.ai/v1/chat/completions"
 
 
+
 # Load the pre-trained model for lung disease analysis
+def download_and_extract_model():
+    # Download model.zip from external storage
+    with zipfile.ZipFile('model.zip', 'r') as zip_ref:
+        zip_ref.extractall('.')
+
 def load_chexnet_model():
-    model = models.resnet50(pretrained=True)
-    model.eval()
+    if not os.path.isfile('resnet50-19c8e357.pth'):
+        download_and_extract_model()
+    model.load_state_dict(torch.load('resnet50-19c8e357.pth'))
     return model
 
 def preprocess_image(image):
