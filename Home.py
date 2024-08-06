@@ -1,5 +1,4 @@
 import streamlit as st
-import zipfile
 import os
 import pandas as pd
 import plotly.express as px
@@ -25,17 +24,29 @@ API_URL = "https://api.ai71.ai/v1/chat/completions"
 
 
 
-# Load the pre-trained model for lung disease analysis
+# Function to download and extract the model from a zip file
 def download_and_extract_model():
-    # Download model.zip from external storage
     with zipfile.ZipFile('model.zip', 'r') as zip_ref:
         zip_ref.extractall('.')
 
 def load_chexnet_model():
-    if not os.path.isfile('resnet50-19c8e357.pth'):
-        download_and_extract_model()
-    model.load_state_dict(torch.load('resnet50-19c8e357.pth'))
+    model = models.resnet50(pretrained=False)
+    model.fc = torch.nn.Linear(model.fc.in_features, 3)  # Change the output layer to 3 classes
+
+    try:
+        if os.path.isfile('resnet50-19c8e357.pth'):
+            state_dict = torch.load('resnet50-19c8e357.pth')
+            model.load_state_dict(state_dict, strict=False)  # Allow for mismatch
+        else:
+            st.error("Model file not found.")
+            return None
+    except RuntimeError as e:
+        st.error(f"Error loading model state dict: {e}")
+        return None
+
+    model.eval()
     return model
+
 
 def preprocess_image(image):
     preprocess = transforms.Compose([
@@ -48,18 +59,29 @@ def preprocess_image(image):
 
 def analyze_image(image):
     model = load_chexnet_model()
-    img = Image.open(BytesIO(image.read()))
-    img_tensor = preprocess_image(img)
-    
+    if model is None:
+        return {
+            "diagnosis": "Model loading error.",
+            "details": "The model could not be loaded. Please check the model file.",
+            "recommendations": "No recommendations available.",
+            "severity": "N/A",
+            "results": {}
+        }
+
     try:
+        img = Image.open(BytesIO(image.read()))
+        img_tensor = preprocess_image(img)
+
         with torch.no_grad():
             outputs = model(img_tensor)
+
         # Mock results; replace with actual model output interpretation
         results = {
             "Lung Cancer": np.random.random(),
             "Pneumonia": np.random.random(),
             "COVID-19": np.random.random()
         }
+
         return {
             "diagnosis": "No abnormalities detected.",
             "details": "The image does not show any clear signs of lung cancer, pneumonia, or COVID-19.",
@@ -76,6 +98,7 @@ def analyze_image(image):
             "severity": "N/A",
             "results": {}
         }
+
         
 # Function to get response from the Falcon 180B model
 def get_response(prompt):
