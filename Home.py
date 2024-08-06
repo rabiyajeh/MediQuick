@@ -30,22 +30,26 @@ def download_and_extract_model():
         zip_ref.extractall('.')
 
 def load_chexnet_model():
+    # Load the model without changing the final layer
     model = models.resnet50(pretrained=False)
-    model.fc = torch.nn.Linear(model.fc.in_features, 3)  # Change the output layer to 3 classes
-
+    
+    # Load the state dict of the original model
     try:
-        if os.path.isfile('resnet50-19c8e357.pth'):
-            state_dict = torch.load('resnet50-19c8e357.pth')
-            model.load_state_dict(state_dict, strict=False)  # Allow for mismatch
-        else:
-            st.error("Model file not found.")
-            return None
+        state_dict = torch.load('resnet50-19c8e357.pth')
+        # Remove the keys related to the final layer
+        state_dict.pop('fc.weight', None)
+        state_dict.pop('fc.bias', None)
+        model.load_state_dict(state_dict, strict=False)
     except RuntimeError as e:
         st.error(f"Error loading model state dict: {e}")
         return None
 
+    # Replace the final layer with the one that has 3 outputs
+    model.fc = torch.nn.Linear(model.fc.in_features, 3)
+
     model.eval()
     return model
+
 
 
 def preprocess_image(image):
